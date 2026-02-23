@@ -1,26 +1,25 @@
 import logging
-from urllib.parse import quote
-from bs4 import BeautifulSoup
 from scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
 
 class AssemblyScraper(BaseScraper):
-    """열린국회정보 - 의안 검색 스크래퍼"""
+    """열린국회정보 Open API 기반 의안 검색"""
 
     SOURCE_NAME = "열린국회정보"
-    SEARCH_URL = "https://likms.assembly.go.kr/bill/main.do"
+    API_URL = "https://open.assembly.go.kr/portal/openapi/TVBPMBILL11"
 
     def scrape(self):
         articles = []
-        search_terms = ["공공기관 정원", "정부조직법", "총정원"]
+        search_terms = ["정원", "정부조직", "공공기관"]
         for term in search_terms:
             try:
                 items = self._search(term)
                 articles.extend(items)
             except Exception as e:
                 logger.error(f"[{self.SOURCE_NAME}] '{term}' 검색 실패: {e}")
+        # URL 기준 중복 제거
         seen = set()
         unique = []
         for a in articles:
@@ -30,67 +29,41 @@ class AssemblyScraper(BaseScraper):
         return unique
 
     def _search(self, term):
-        search_url = "https://likms.assembly.go.kr/bill/billSearchPage.do"
         params = {
-            "billName": term,
-            "pageSize": "20",
-            "start_age": "22",
+            "Type": "json",
+            "pSize": "30",
+            "AGE": "22",
+            "BILL_NAME": term,
         }
-        resp = self.fetch(search_url, params=params)
+        resp = self.fetch(self.API_URL, params=params)
         if not resp:
             return []
 
-        soup = BeautifulSoup(resp.text, "lxml")
         results = []
+        try:
+            data = resp.json()
+            api_data = data.get("TVBPMBILL11", [])
+            if not api_data or len(api_data) < 2:
+                return []
 
-        rows = soup.select("table tbody tr")
-        for row in rows[:15]:
-            try:
-                tds = row.select("td")
-                if len(tds) < 3:
-                    continue
-                link_tag = row.select_one("a")
-                if not link_tag:
-                    continue
-                title = link_tag.get_text(strip=True)
-                if not title:
-                    continue
-
-                href = link_tag.get("href", "")
-                # JavaScript 링크 처리
-                if "javascript" in href.lower():
-                    onclick = link_tag.get("onclick", "")
-                    if onclick:
-                        # billDetail 등의 함수에서 ID 추출 시도
-                        import re
-                        match = re.search(r"'([A-Z0-9_]+)'", onclick)
-                        if match:
-                            bill_id = match.group(1)
-                            href = f"https://likms.assembly.go.kr/bill/billDetail.do?billId={bill_id}"
-                        else:
-                            continue
-                    else:
-                        continue
-                elif href and not href.startswith("http"):
-                    href = "https://likms.assembly.go.kr" + href
-
-                date = ""
-                for td in tds:
-                    text = td.get_text(strip=True)
-                    if len(text) == 10 and (text.count("-") == 2 or text.count(".") == 2):
-                        date = text
-                        break
+            rows = api_data[1].get("row", [])
+            for row in rows:
+                bill_name = row.get("BILL_NAME", "")
+                propose_dt = row.get("PROPOSE_DT", "")
+                proposer = row.get("RST_PROPOSER", row.get("PROPOSER", ""))
+                link = row.get("LINK_URL", "")
+                proposer_kind = row.get("PROPOSER_KIND", "")
+                proc_result = row.get("PROC_RESULT_CD", "계류")
 
                 results.append({
                     "source": self.SOURCE_NAME,
-                    "title": title,
-                    "url": href,
-                    "summary": f"검색어: {term}",
-                    "published_date": date,
+                    "title": bill_name,
+                    "url": link,
+                    "summary": f"발의: {proposer} ({proposer_kind}) | 처리상태: {proc_result}",
+                    "published_date": propose_dt,
                 })
-            except Exception as e:
-                logger.debug(f"[{self.SOURCE_NAME}] 항목 파싱 오류: {e}")
-                continue
+        except (ValueError, KeyError) as e:
+            logger.error(f"[{self.SOURCE_NAME}] 응답 파싱 오류: {e}")
 
         logger.info(f"[{self.SOURCE_NAME}] '{term}' -> {len(results)}건 수집")
         return results
