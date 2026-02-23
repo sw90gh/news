@@ -10,7 +10,7 @@ class AssemblyScraper(BaseScraper):
     """열린국회정보 - 의안 검색 스크래퍼"""
 
     SOURCE_NAME = "열린국회정보"
-    SEARCH_URL = "https://likms.assembly.go.kr/bill/BillSearchResult.do"
+    SEARCH_URL = "https://likms.assembly.go.kr/bill/main.do"
 
     def scrape(self):
         articles = []
@@ -30,20 +30,25 @@ class AssemblyScraper(BaseScraper):
         return unique
 
     def _search(self, term):
+        search_url = "https://likms.assembly.go.kr/bill/billSearchPage.do"
         params = {
             "billName": term,
             "pageSize": "20",
+            "start_age": "22",
         }
-        resp = self.fetch(self.SEARCH_URL, params=params)
+        resp = self.fetch(search_url, params=params)
         if not resp:
             return []
 
         soup = BeautifulSoup(resp.text, "lxml")
         results = []
 
-        rows = soup.select("table tbody tr, div.srch_list li")
+        rows = soup.select("table tbody tr")
         for row in rows[:15]:
             try:
+                tds = row.select("td")
+                if len(tds) < 3:
+                    continue
                 link_tag = row.select_one("a")
                 if not link_tag:
                     continue
@@ -52,18 +57,27 @@ class AssemblyScraper(BaseScraper):
                     continue
 
                 href = link_tag.get("href", "")
-                if href and not href.startswith("http"):
+                # JavaScript 링크 처리
+                if "javascript" in href.lower():
+                    onclick = link_tag.get("onclick", "")
+                    if onclick:
+                        # billDetail 등의 함수에서 ID 추출 시도
+                        import re
+                        match = re.search(r"'([A-Z0-9_]+)'", onclick)
+                        if match:
+                            bill_id = match.group(1)
+                            href = f"https://likms.assembly.go.kr/bill/billDetail.do?billId={bill_id}"
+                        else:
+                            continue
+                    else:
+                        continue
+                elif href and not href.startswith("http"):
                     href = "https://likms.assembly.go.kr" + href
 
-                # 날짜 정보 추출
-                tds = row.select("td")
                 date = ""
                 for td in tds:
                     text = td.get_text(strip=True)
-                    if len(text) == 10 and text.count("-") == 2:
-                        date = text
-                        break
-                    if len(text) == 10 and text.count(".") == 2:
+                    if len(text) == 10 and (text.count("-") == 2 or text.count(".") == 2):
                         date = text
                         break
 

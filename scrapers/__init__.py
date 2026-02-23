@@ -1,16 +1,18 @@
 from scrapers.base import BaseScraper
-from scrapers.naver_news import NaverNewsScraper
+from scrapers.google_news import GoogleNewsScraper
 from scrapers.moef import MoefScraper
 from scrapers.mois import MoisScraper
 from scrapers.mpm import MpmScraper
 from scrapers.law import LawScraper
 from scrapers.assembly import AssemblyScraper
+from scrapers.korea_kr import KoreaKrScraper
 
 ALL_SCRAPERS = [
-    NaverNewsScraper,
+    GoogleNewsScraper,
     MoefScraper,
     MoisScraper,
     MpmScraper,
     LawScraper,
     AssemblyScraper,
+    KoreaKrScraper,
 ]

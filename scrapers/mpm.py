@@ -9,7 +9,8 @@ class MpmScraper(BaseScraper):
     """인사혁신처 보도자료 스크래퍼"""
 
     SOURCE_NAME = "인사혁신처"
-    LIST_URL = "https://www.mpm.go.kr/mpm/info/infoJungchaek/infoJungchaekNews/"
+    BASE_URL = "https://www.mpm.go.kr"
+    LIST_URL = "https://www.mpm.go.kr/mpm/comm/newsPress/newsPressRelease/"
 
     def scrape(self):
         articles = []
@@ -30,10 +31,13 @@ class MpmScraper(BaseScraper):
         soup = BeautifulSoup(resp.text, "lxml")
         results = []
 
-        rows = soup.select("table.boardList tbody tr, ul.bbs_list li, div.board_list li")
+        rows = soup.select("table.bbsList tbody tr")
         for row in rows:
             try:
-                link_tag = row.select_one("a")
+                title_td = row.select_one("td.title")
+                if not title_td:
+                    continue
+                link_tag = title_td.select_one("a")
                 if not link_tag:
                     continue
                 title = link_tag.get_text(strip=True)
@@ -42,10 +46,10 @@ class MpmScraper(BaseScraper):
 
                 href = link_tag.get("href", "")
                 if href and not href.startswith("http"):
-                    href = "https://www.mpm.go.kr" + href
+                    href = self.BASE_URL + href
 
-                date_tag = row.select_one("td.date, span.date, td:last-of-type")
-                date = date_tag.get_text(strip=True) if date_tag else ""
+                date_td = row.select_one("td.date")
+                date = date_td.get_text(strip=True) if date_td else ""
 
                 results.append({
                     "source": self.SOURCE_NAME,

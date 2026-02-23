@@ -1,16 +1,15 @@
 import logging
-from urllib.parse import quote
-from bs4 import BeautifulSoup
+import xml.etree.ElementTree as ET
 from scrapers.base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
 
 class LawScraper(BaseScraper):
-    """국가법령정보센터 법령 검색 스크래퍼"""
+    """국가법령정보센터 Open API 기반 법령 검색"""
 
     SOURCE_NAME = "국가법령정보센터"
-    SEARCH_URL = "https://www.law.go.kr/LSW/lsSc.do"
+    API_URL = "http://www.law.go.kr/DRF/lawSearch.do"
 
     def scrape(self):
         articles = []
@@ -32,44 +31,38 @@ class LawScraper(BaseScraper):
 
     def _search(self, term):
         params = {
-            "menuId": "7",
-            "subMenuId": "41",
-            "tabMenuId": "141",
+            "OC": "test",
+            "target": "law",
+            "type": "XML",
             "query": term,
-            "section": "lmSc",
+            "display": "20",
+            "sort": "ddes",
         }
-        resp = self.fetch(self.SEARCH_URL, params=params)
+        resp = self.fetch(self.API_URL, params=params)
         if not resp:
             return []
 
-        soup = BeautifulSoup(resp.text, "lxml")
         results = []
+        try:
+            root = ET.fromstring(resp.content)
+            for law in root.findall(".//law"):
+                law_name = law.findtext("법령명한글", "")
+                law_id = law.findtext("법령일련번호", "")
+                ministry = law.findtext("소관부처명", "")
+                enforcement_date = law.findtext("시행일자", "")
+                detail_link = law.findtext("법령상세링크", "")
 
-        rows = soup.select("div.srchRst li, table.srch_list tbody tr, div.list_item")
-        for row in rows[:15]:
-            try:
-                link_tag = row.select_one("a")
-                if not link_tag:
-                    continue
-                title = link_tag.get_text(strip=True)
-
-                href = link_tag.get("href", "")
-                if href and not href.startswith("http"):
-                    href = "https://www.law.go.kr" + href
-
-                date_tag = row.select_one("span.date, td.date, span.txt_date")
-                date = date_tag.get_text(strip=True) if date_tag else ""
+                url = f"https://www.law.go.kr{detail_link}" if detail_link else ""
 
                 results.append({
                     "source": self.SOURCE_NAME,
-                    "title": title,
-                    "url": href,
-                    "summary": f"검색어: {term}",
-                    "published_date": date,
+                    "title": law_name,
+                    "url": url,
+                    "summary": f"소관: {ministry} | 검색어: {term}",
+                    "published_date": enforcement_date,
                 })
-            except Exception as e:
-                logger.debug(f"[{self.SOURCE_NAME}] 항목 파싱 오류: {e}")
-                continue
+        except ET.ParseError as e:
+            logger.error(f"[{self.SOURCE_NAME}] XML 파싱 오류: {e}")
 
         logger.info(f"[{self.SOURCE_NAME}] '{term}' -> {len(results)}건 수집")
         return results
