@@ -1,0 +1,29 @@
+# 공공기관 정원 뉴스 스크래퍼 설정
+
+# 이메일 설정
+email:
+  sender: ""          # 발신 Gmail 주소 (예: yourname@gmail.com)
+  password: ""        # Gmail 앱 비밀번호 (GitHub Actions에서는 Secrets 사용)
+  recipients:         # 수신자 목록
+    - ""              # 수신 이메일 주소 입력
+
+# 검색 키워드
+keywords:
+  - "공공기관 정원"
+  - "정부조직 정원"
+  - "정원관리"
+  - "공무원 정원"
+  - "총정원"
+  - "정원조정"
+  - "공공기관 인력"
+  - "공공기관 채용"
+
+# 수집 기간 (일)
+collection_days: 365
+
+# 스크래퍼 설정
+scraper:
+  request_delay: 2      # 요청 간 대기 시간 (초)
+  timeout: 30            # 요청 타임아웃 (초)
+  max_retries: 3         # 최대 재시도 횟수
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

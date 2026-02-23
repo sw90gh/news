@@ -1,0 +1,38 @@
+name: Daily News Scraper
+
+on:
+  schedule:
+    # 매일 오전 8시 KST (UTC 23:00 전날)
+    - cron: '0 23 * * *'
+  workflow_dispatch:  # 수동 실행 가능
+
+jobs:
+  scrape-and-send:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore DB cache
+        uses: actions/cache@v4
+        with:
+          path: news_history.db
+          key: news-db-${{ github.run_number }}
+          restore-keys: |
+            news-db-
+
+      - name: Run news scraper
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
+        run: python main.py

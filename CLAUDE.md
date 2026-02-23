@@ -28,12 +28,41 @@
 - 수신 이메일: config 파일에서 설정 (미정)
 - Gmail 발신 정보: GitHub Secrets로 관리
 
+## 프로젝트 구조
+```
+news/
+├── main.py                  # 메인 실행 파일
+├── database.py              # SQLite DB (중복 제거/이력 관리)
+├── email_sender.py          # Gmail SMTP 이메일 발송
+├── config.yaml              # 설정 파일 (키워드, 이메일 등)
+├── requirements.txt         # Python 패키지 의존성
+├── scrapers/
+│   ├── __init__.py
+│   ├── base.py              # 기본 스크래퍼 클래스
+│   ├── naver_news.py        # 네이버 뉴스 검색
+│   ├── moef.py              # 기획재정부 보도자료
+│   ├── mois.py              # 행정안전부 보도자료
+│   ├── mpm.py               # 인사혁신처 보도자료
+│   ├── law.py               # 국가법령정보센터
+│   └── assembly.py          # 열린국회정보 의안
+└── .github/workflows/
+    └── daily_news.yml       # GitHub Actions 스케줄링
+```
+
+## GitHub Actions 설정 필요 사항
+리포지토리 Settings > Secrets and variables > Actions에서 추가:
+- `EMAIL_SENDER`: 발신 Gmail 주소
+- `EMAIL_PASSWORD`: Gmail 앱 비밀번호
+- `EMAIL_RECIPIENTS`: 수신자 이메일 (쉼표 구분)
+
 ## 현재 상태
 - [x] 요구사항 정의 완료
 - [x] 기술 스택 결정
 - [x] 데이터 소스 선정
-- [ ] 상세 구현 계획 수립
-- [ ] 스크래퍼 모듈 구현
-- [ ] 이메일 발송 모듈 구현
-- [ ] GitHub Actions 워크플로우 설정
-- [ ] 테스트 및 검증
+- [x] 스크래퍼 모듈 구현 (6개 소스)
+- [x] 이메일 발송 모듈 구현
+- [x] 데이터베이스 모듈 구현
+- [x] 메인 실행 파일 구현
+- [x] GitHub Actions 워크플로우 설정
+- [ ] 실제 환경 테스트 및 검증
+- [ ] 스크래퍼 셀렉터 미세 조정 (사이트 구조 변경 시)
