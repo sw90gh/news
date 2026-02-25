@@ -60,6 +60,30 @@ def get_unsent_articles():
     return [dict(r) for r in rows]
 
 
+def get_today_new_articles():
+    """오늘 수집된 신규 기사만 조회"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM articles WHERE sent = 0 AND collected_at LIKE ? ORDER BY published_date DESC",
+        (f"{today}%",),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_older_unsent_articles():
+    """오늘 이전에 수집됐지만 미발송된 기사 조회"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT * FROM articles WHERE sent = 0 AND collected_at NOT LIKE ? ORDER BY published_date DESC",
+        (f"{today}%",),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def mark_as_sent(article_ids):
     if not article_ids:
         return

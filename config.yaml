@@ -26,7 +26,7 @@ keywords:
   - "남영현"
 
 # 수집 기간 (일)
-collection_days: 365
+collection_days: 7
 
 # 스크래퍼 설정
 scraper:

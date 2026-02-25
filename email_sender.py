@@ -7,21 +7,12 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-def build_html(articles):
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    # 소스별 그룹핑
+def _build_article_rows(articles, category_order):
+    """기사 목록을 카테고리별로 HTML 행으로 변환"""
     grouped = {}
     for a in articles:
         src = a.get("source", "기타")
         grouped.setdefault(src, []).append(a)
-
-    # 소스 카테고리 분류
-    category_order = {
-        "법령/입법": ["국가법령정보센터", "열린국회정보"],
-        "정부 정책/보도자료": ["기획재정부", "행정안전부", "인사혁신처", "정책브리핑"],
-        "뉴스": [],
-    }
 
     rows = []
     for category, sources in category_order.items():
@@ -33,17 +24,16 @@ def build_html(articles):
 
         rows.append(f"""
         <tr>
-            <td style="background:#1a73e8;color:#fff;padding:12px 16px;font-size:16px;font-weight:bold;" colspan="2">
+            <td style="background:#1a73e8;color:#fff;padding:10px 16px;font-size:14px;font-weight:bold;">
                 {category}
             </td>
         </tr>""")
 
         for a in category_articles:
-            badge_color = "#e8f0fe"
             rows.append(f"""
         <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:12px 16px;">
-                <span style="background:{badge_color};color:#1a73e8;padding:2px 8px;border-radius:4px;font-size:12px;margin-right:8px;">
+            <td style="padding:10px 16px;">
+                <span style="background:#e8f0fe;color:#1a73e8;padding:2px 8px;border-radius:4px;font-size:11px;margin-right:8px;">
                     {a['source']}
                 </span>
                 <a href="{a['url']}" style="color:#1a0dab;text-decoration:none;font-size:14px;font-weight:bold;">
@@ -59,14 +49,14 @@ def build_html(articles):
     for src, items in grouped.items():
         rows.append(f"""
         <tr>
-            <td style="background:#5f6368;color:#fff;padding:12px 16px;font-size:16px;font-weight:bold;" colspan="2">
+            <td style="background:#5f6368;color:#fff;padding:10px 16px;font-size:14px;font-weight:bold;">
                 {src}
             </td>
         </tr>""")
         for a in items:
             rows.append(f"""
         <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:12px 16px;">
+            <td style="padding:10px 16px;">
                 <a href="{a['url']}" style="color:#1a0dab;text-decoration:none;font-size:14px;font-weight:bold;">
                     {a['title']}
                 </a>
@@ -75,7 +65,55 @@ def build_html(articles):
             </td>
         </tr>""")
 
-    article_rows = "\n".join(rows)
+    return "\n".join(rows)
+
+
+CATEGORY_ORDER = {
+    "법령/입법": ["국가법령정보센터", "열린국회정보"],
+    "정부 정책/보도자료": ["기획재정부", "행정안전부", "인사혁신처", "정책브리핑"],
+    "뉴스": [],
+}
+
+
+def build_html(today_articles, older_articles):
+    today = datetime.now().strftime("%Y-%m-%d")
+    total = len(today_articles) + len(older_articles)
+
+    # 오늘의 새 기사 섹션
+    if today_articles:
+        today_rows = _build_article_rows(today_articles, CATEGORY_ORDER)
+        today_section = f"""
+    <tr>
+        <td style="background:#0d47a1;color:#fff;padding:16px;font-size:18px;font-weight:bold;">
+            &#11088; 오늘의 새 기사 ({len(today_articles)}건)
+        </td>
+    </tr>
+    {today_rows}"""
+    else:
+        today_section = """
+    <tr>
+        <td style="background:#0d47a1;color:#fff;padding:16px;font-size:18px;font-weight:bold;">
+            오늘의 새 기사
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:20px 16px;text-align:center;color:#999;font-size:14px;">
+            오늘 새로 수집된 기사가 없습니다.
+        </td>
+    </tr>"""
+
+    # 이전 미발송 기사 섹션
+    if older_articles:
+        older_rows = _build_article_rows(older_articles, CATEGORY_ORDER)
+        older_section = f"""
+    <tr>
+        <td style="background:#78909c;color:#fff;padding:14px 16px;font-size:16px;font-weight:bold;">
+            &#128196; 이전 미발송 기사 ({len(older_articles)}건)
+        </td>
+    </tr>
+    {older_rows}"""
+    else:
+        older_section = ""
 
     html = f"""
 <!DOCTYPE html>
@@ -86,10 +124,11 @@ def build_html(articles):
     <tr>
         <td style="background:#1a73e8;padding:24px;text-align:center;">
             <h1 style="color:#fff;margin:0;font-size:22px;">공공기관 정원 뉴스 브리핑</h1>
-            <p style="color:#c4d7f5;margin:8px 0 0;font-size:14px;">{today} | 총 {len(articles)}건</p>
+            <p style="color:#c4d7f5;margin:8px 0 0;font-size:14px;">{today} | 새 기사 {len(today_articles)}건 | 총 {total}건</p>
         </td>
     </tr>
-    {article_rows}
+    {today_section}
+    {older_section}
     <tr>
         <td style="background:#f5f5f5;padding:16px;text-align:center;color:#999;font-size:12px;">
             본 메일은 자동 수집 시스템에 의해 발송되었습니다.<br>
@@ -102,9 +141,10 @@ def build_html(articles):
     return html
 
 
-def send_email(config, articles):
-    if not articles:
-        logger.info("발송할 새 기사가 없습니다.")
+def send_email(config, today_articles, older_articles):
+    total = len(today_articles) + len(older_articles)
+    if total == 0:
+        logger.info("발송할 기사가 없습니다.")
         return False
 
     email_cfg = config.get("email", {})
@@ -118,9 +158,9 @@ def send_email(config, articles):
         return False
 
     today = datetime.now().strftime("%Y-%m-%d")
-    subject = f"[공공기관 정원] 뉴스 브리핑 ({today}) - {len(articles)}건"
+    subject = f"[공공기관 정원] 뉴스 브리핑 ({today}) - 새 기사 {len(today_articles)}건"
 
-    html = build_html(articles)
+    html = build_html(today_articles, older_articles)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -132,7 +172,7 @@ def send_email(config, articles):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender, password)
             server.sendmail(sender, recipients, msg.as_string())
-        logger.info(f"이메일 발송 완료: {len(articles)}건 -> {recipients}")
+        logger.info(f"이메일 발송 완료: 새 기사 {len(today_articles)}건, 이전 미발송 {len(older_articles)}건 -> {recipients}")
         return True
     except Exception as e:
         logger.error(f"이메일 발송 실패: {e}")

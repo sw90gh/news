@@ -4,7 +4,7 @@ import yaml
 import logging
 from datetime import datetime
 
-from database import init_db, save_article, get_unsent_articles, mark_as_sent, cleanup_old_articles
+from database import init_db, save_article, get_today_new_articles, get_older_unsent_articles, mark_as_sent, cleanup_old_articles
 from email_sender import send_email
 from scrapers import ALL_SCRAPERS
 
@@ -85,14 +85,21 @@ def main():
 
     logger.info(f"신규 기사: {new_count}건")
 
-    # 미발송 기사 조회 및 이메일 발송
-    unsent = get_unsent_articles()
-    if unsent:
-        logger.info(f"미발송 기사 {len(unsent)}건 이메일 발송 시작")
-        success = send_email(config, unsent)
+    # 오늘 수집 기사 / 이전 미발송 기사 분리 조회
+    today_articles = get_today_new_articles()
+    older_articles = get_older_unsent_articles()
+
+    logger.info(f"오늘의 새 기사: {len(today_articles)}건")
+    logger.info(f"이전 미발송 기사: {len(older_articles)}건")
+
+    # 이메일 발송
+    total = len(today_articles) + len(older_articles)
+    if total > 0:
+        logger.info(f"이메일 발송 시작 (새 기사 {len(today_articles)}건 + 이전 미발송 {len(older_articles)}건)")
+        success = send_email(config, today_articles, older_articles)
         if success:
-            ids = [a["id"] for a in unsent]
-            mark_as_sent(ids)
+            all_ids = [a["id"] for a in today_articles] + [a["id"] for a in older_articles]
+            mark_as_sent(all_ids)
             logger.info("이메일 발송 및 상태 업데이트 완료")
     else:
         logger.info("발송할 새 기사가 없습니다.")
