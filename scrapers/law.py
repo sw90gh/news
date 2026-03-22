@@ -10,7 +10,7 @@ class LawScraper(BaseScraper):
     """법령/입법 동향 - Google News RSS 기반 수집"""
 
     SOURCE_NAME = "국가법령정보센터"
-    RSS_URL = "https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
+    RSS_URL = "https://news.google.com/rss/search?q={query}+when:7d&hl=ko&gl=KR&ceid=KR:ko"
 
     # 법령 관련 전용 검색어
     LAW_KEYWORDS = [
@@ -50,6 +50,9 @@ class LawScraper(BaseScraper):
             if summary:
                 from bs4 import BeautifulSoup
                 summary = BeautifulSoup(summary, "lxml").get_text(strip=True)
+
+            if not self.is_within_period(published):
+                continue
 
             results.append({
                 "source": self.SOURCE_NAME,

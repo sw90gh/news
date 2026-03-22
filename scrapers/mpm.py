@@ -41,7 +41,10 @@ class MpmScraper(BaseScraper):
                 if not link_tag:
                     continue
                 title = link_tag.get_text(strip=True)
-                if not self.matches_keyword(title):
+                matched_kw = self.get_matched_keyword(title)
+                if not matched_kw:
+                    continue
+                if not self.passes_context_filter(title, matched_kw):
                     continue
 
                 href = link_tag.get("href", "")
@@ -50,6 +53,8 @@ class MpmScraper(BaseScraper):
 
                 date_td = row.select_one("td.date")
                 date = date_td.get_text(strip=True) if date_td else ""
+                if not self.is_within_period(date):
+                    continue
 
                 results.append({
                     "source": self.SOURCE_NAME,

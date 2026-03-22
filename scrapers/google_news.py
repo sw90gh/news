@@ -10,7 +10,7 @@ class GoogleNewsScraper(BaseScraper):
     """Google News RSS 기반 뉴스 수집"""
 
     SOURCE_NAME = "구글뉴스"
-    RSS_URL = "https://news.google.com/rss/search?q={query}&hl=ko&gl=KR&ceid=KR:ko"
+    RSS_URL = "https://news.google.com/rss/search?q={query}+when:7d&hl=ko&gl=KR&ceid=KR:ko"
 
     def scrape(self):
         articles = []
@@ -47,6 +47,13 @@ class GoogleNewsScraper(BaseScraper):
             source_name = ""
             if hasattr(entry, "source"):
                 source_name = entry.source.get("title", "")
+
+            if not self.is_within_period(published):
+                continue
+
+            full_text = f"{title} {summary}"
+            if not self.passes_context_filter(full_text, keyword):
+                continue
 
             results.append({
                 "source": f"{self.SOURCE_NAME}({source_name})" if source_name else self.SOURCE_NAME,

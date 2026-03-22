@@ -123,7 +123,7 @@ def build_html(today_articles, older_articles):
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:700px;margin:20px auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
     <tr>
         <td style="background:#1a73e8;padding:24px;text-align:center;">
-            <h1 style="color:#fff;margin:0;font-size:22px;">공공기관 정원 뉴스 브리핑</h1>
+            <h1 style="color:#fff;margin:0;font-size:22px;">K-water 정원 뉴스 브리핑</h1>
             <p style="color:#c4d7f5;margin:8px 0 0;font-size:14px;">{today} | 새 기사 {len(today_articles)}건 | 총 {total}건</p>
         </td>
     </tr>
@@ -158,7 +158,7 @@ def send_email(config, today_articles, older_articles):
         return False
 
     today = datetime.now().strftime("%Y-%m-%d")
-    subject = f"[공공기관 정원] 뉴스 브리핑 ({today}) - 새 기사 {len(today_articles)}건"
+    subject = f"[K-water 정원] 뉴스 브리핑 ({today}) - 새 기사 {len(today_articles)}건"
 
     html = build_html(today_articles, older_articles)
 

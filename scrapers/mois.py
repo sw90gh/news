@@ -17,11 +17,16 @@ class MoisScraper(BaseScraper):
             feed = feedparser.parse(self.RSS_URL)
             for entry in feed.entries:
                 title = entry.get("title", "")
-                if not self.matches_keyword(title):
+                matched_kw = self.get_matched_keyword(title)
+                if not matched_kw:
                     continue
                 link = entry.get("link", "")
                 published = entry.get("published", "")
+                if not self.is_within_period(published):
+                    continue
                 summary = entry.get("summary", entry.get("description", ""))
+                if not self.passes_context_filter(f"{title} {summary}", matched_kw):
+                    continue
 
                 articles.append({
                     "source": self.SOURCE_NAME,

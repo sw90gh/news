@@ -55,6 +55,9 @@ class AssemblyScraper(BaseScraper):
                 proposer_kind = row.get("PROPOSER_KIND", "")
                 proc_result = row.get("PROC_RESULT_CD", "계류")
 
+                if not self.is_within_period(propose_dt):
+                    continue
+
                 results.append({
                     "source": self.SOURCE_NAME,
                     "title": bill_name,
