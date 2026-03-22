@@ -6,6 +6,7 @@ from datetime import datetime
 
 from database import init_db, save_article, get_today_new_articles, get_older_unsent_articles, mark_as_sent, cleanup_old_articles
 from email_sender import send_email
+from summarizer import summarize_articles
 from scrapers import ALL_SCRAPERS
 
 # 로깅 설정
@@ -92,11 +93,21 @@ def main():
     logger.info(f"오늘의 새 기사: {len(today_articles)}건")
     logger.info(f"이전 미발송 기사: {len(older_articles)}건")
 
+    # AI 요약 (오늘 기사 대상)
+    summary_result = None
+    if today_articles:
+        logger.info("AI 브리핑 요약 생성 중...")
+        summary_result = summarize_articles(today_articles)
+        if summary_result:
+            logger.info("AI 브리핑 요약 완료")
+        else:
+            logger.info("AI 요약 건너뜀 (API 키 미설정 또는 실패)")
+
     # 이메일 발송
     total = len(today_articles) + len(older_articles)
     if total > 0:
         logger.info(f"이메일 발송 시작 (새 기사 {len(today_articles)}건 + 이전 미발송 {len(older_articles)}건)")
-        success = send_email(config, today_articles, older_articles)
+        success = send_email(config, today_articles, older_articles, summary_result)
         if success:
             all_ids = [a["id"] for a in today_articles] + [a["id"] for a in older_articles]
             mark_as_sent(all_ids)
